@@ -279,43 +279,13 @@
 <script>
   // CONFIGURATION
   const TEACHER_PASSWORD = "pas"; // <--- CHANGE TEACHER PASSWORD HERE
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzdGxpvTGVhRUEaC57b2xtuOhF1W9PHGMqKqp_b3gRsIwSTRuh-XpDyYPpmdBXYw1XF/exec"; // <--- PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEYO1ucAQCKKRByDFpIBB5lsPal0KQw3_hLdOwlQkWsPnFLS-I07-77TS_jlSRnKA1/exec"; // <--- PASTE YOUR GOOGLE APPS SCRIPT URL HERE
 
-  let submissions = [];
+  let submissions = JSON.parse(localStorage.getItem('practicals_db')) || [];
 
-  // Fetch all submissions from Google Sheets Cloud Database
-  async function fetchAllSubmissions() {
-    try {
-      const response = await fetch(GOOGLE_SCRIPT_URL);
-      const result = await response.json();
-      if (result.status === 'success') {
-        submissions = result.data;
-        render();
-      }
-    } catch (err) {
-      console.error("Error fetching submissions:", err);
-    }
-  }
-
-  // Auto load student saved details if returning
-  function loadSavedStudent() {
-    const savedStudent = JSON.parse(localStorage.getItem('current_student'));
-    if (savedStudent) {
-      document.getElementById('student_name').value = savedStudent.name || '';
-      document.getElementById('roll_no').value = savedStudent.roll || '';
-      document.getElementById('student_class').value = savedStudent.class || '';
-
-      document.getElementById('welcome-text').innerText = `Welcome back, ${savedStudent.name}! (Class: ${savedStudent.class}, Roll No: ${savedStudent.roll})`;
-      document.getElementById('welcome-banner').style.display = 'flex';
-    }
-  }
-
-  function clearSavedStudent() {
-    localStorage.removeItem('current_student');
-    document.getElementById('student_name').value = '';
-    document.getElementById('roll_no').value = '';
-    document.getElementById('student_class').value = '';
-    document.getElementById('welcome-banner').style.display = 'none';
+  function saveData() {
+    localStorage.setItem('practicals_db', JSON.stringify(submissions));
+    render();
   }
 
   // Teacher Auth
@@ -343,7 +313,7 @@
     document.getElementById('view-teacher').style.display = isLoggedIn ? 'block' : 'none';
   }
 
-  // Student Upload Handler
+  // File Upload Handler
   async function handleStudentSubmit(e) {
     e.preventDefault();
     
@@ -370,12 +340,6 @@
       });
 
       const payload = {
-        action: 'upload',
-        studentName: studentName,
-        studentClass: studentClass,
-        rollNo: rollNo,
-        title: document.getElementById('title').value,
-        notes: document.getElementById('notes').value,
         fileName: `[${studentClass}_Roll-${rollNo}]_${studentName}_${file.name}`,
         fileType: file.type,
         fileData: base64Data
@@ -383,31 +347,36 @@
 
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
         body: JSON.stringify(payload)
       });
 
       const result = await response.json();
 
       if (result.status === 'success') {
-        localStorage.setItem('current_student', JSON.stringify({
-          name: studentName,
-          roll: rollNo,
-          class: studentClass
-        }));
+        const newSubmission = {
+          id: String(Date.now()),
+          student_name: studentName,
+          student_class: studentClass,
+          roll_no: rollNo,
+          title: document.getElementById('title').value,
+          link: result.fileUrl,
+          notes: document.getElementById('notes').value,
+          status: 'pending',
+          score: 0
+        };
 
-        document.getElementById('title').value = '';
-        document.getElementById('notes').value = '';
-        fileInput.value = '';
-
-        loadSavedStudent();
+        submissions.push(newSubmission);
+        saveData();
+        e.target.reset();
         alert('Practical file uploaded successfully!');
-        fetchAllSubmissions(); // Reload global list
       } else {
         alert('Upload failed: ' + result.message);
       }
     } catch (err) {
-      alert('Error uploading file. Check your Google Apps Script configuration.');
+      alert('Error uploading file. Make sure your Google Apps Script URL is correct.');
       console.error(err);
     } finally {
       submitBtn.disabled = false;
@@ -415,21 +384,12 @@
     }
   }
 
-  // Teacher Review Action (Sends update to Google Sheets)
-  async function reviewSubmission(id, status) {
-    try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'review', id: id, status: status })
-      });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        fetchAllSubmissions(); // Reload and refresh state for everyone
-      }
-    } catch (err) {
-      alert('Failed to update submission status.');
+  function reviewSubmission(id, status) {
+    const item = submissions.find(s => s.id === id);
+    if (item) {
+      item.status = status;
+      item.score = status === 'correct' ? 100 : 0;
+      saveData();
     }
   }
 
@@ -445,8 +405,7 @@
     const studentBody = document.getElementById('student-history-body');
     studentBody.innerHTML = submissions.map(item => `
       <tr>
-        <td><strong>${item.student_name}</strong></td>
-        <td>${item.student_class || 'BCS'} (Roll: ${item.roll_no || 'N/A'})</td>
+        <td><strong>${item.student_class || 'BCS'} (Roll: ${item.roll_no || 'N/A'})</strong></td>
         <td>${item.title}</td>
         <td><a href="${item.link}" target="_blank" rel="noopener">Open File</a></td>
         <td><span class="badge ${item.status}">${item.status.toUpperCase()}</span></td>
@@ -454,7 +413,7 @@
       </tr>
     `).join('');
 
-    // Render Teacher Table (Shows ALL submissions pending review from ANY student)
+    // Render Teacher Table
     const teacherBody = document.getElementById('teacher-review-body');
     const pendingItems = submissions.filter(s => s.status === 'pending');
     
@@ -477,8 +436,8 @@
     }
   }
 
-  // Initial Load
-  loadSavedStudent();
   checkTeacherAuth();
-  fetchAllSubmissions();
+  render();
 </script>
+</body>
+</html>
