@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Practical Work Submission Portal</title>
+  <title>Practical Work Portal - Google Drive Sync</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -29,9 +29,28 @@
     .container { max-width: 960px; margin: 0 auto; }
 
     .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 24px;
       padding-bottom: 16px;
       border-bottom: 2px solid var(--border);
+    }
+
+    .role-switcher button {
+      padding: 10px 18px;
+      margin-left: 6px;
+      border: 1px solid var(--primary);
+      background: #ffffff;
+      color: var(--primary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .role-switcher button.active {
+      background: var(--primary);
+      color: #ffffff;
     }
 
     .card {
@@ -59,29 +78,18 @@
       transition: width 0.4s ease;
     }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-
-    .full-width {
-      grid-column: span 2;
-    }
-
     form { display: flex; flex-direction: column; gap: 14px; }
-    label { font-size: 14px; font-weight: 600; color: var(--subtext); display: block; margin-bottom: 4px; }
+    label { font-size: 14px; font-weight: 600; color: var(--subtext); }
 
-    input, textarea, select {
+    input, textarea {
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 14px;
       width: 100%;
-      background: #ffffff;
     }
 
-    button.btn-primary {
+    button.submit-btn {
       background: var(--primary);
       color: white;
       border: none;
@@ -91,7 +99,7 @@
       cursor: pointer;
     }
 
-    button.btn-primary:disabled {
+    button.submit-btn:disabled {
       background: #94a3b8;
       cursor: not-allowed;
     }
@@ -130,27 +138,6 @@
       font-weight: 600;
       font-size: 14px;
     }
-
-    .teacher-section {
-      margin-top: 50px;
-      border-top: 2px dashed var(--border);
-      padding-top: 24px;
-    }
-
-    .logout-btn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      float: right;
-    }
-
-    @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .full-width { grid-column: span 1; }
-    }
   </style>
 </head>
 <body>
@@ -158,7 +145,11 @@
 <div class="container">
 
   <div class="header">
-    <h2>Student Practical Portal</h2>
+    <h2>Practical Submission Portal</h2>
+    <div class="role-switcher">
+      <button id="btn-student" class="active" onclick="switchView('student')">Student View</button>
+      <button id="btn-teacher" onclick="switchView('teacher')">Teacher Review</button>
+    </div>
   </div>
 
   <!-- STUDENT VIEW -->
@@ -172,46 +163,26 @@
     </div>
 
     <div class="card">
-      <h3>Upload Practical Work</h3>
+      <h3>Upload Practical Work to Teacher's Google Drive</h3>
       <form id="submission-form" onsubmit="handleStudentSubmit(event)">
-        <div class="form-grid">
-          <div>
-            <label>Student Name</label>
-            <input type="text" id="student_name" placeholder="e.g. John Doe" required>
-          </div>
-
-          <div>
-            <label>Roll No.</label>
-            <input type="text" id="roll_no" placeholder="e.g. 101" required>
-          </div>
-
-          <div>
-            <label>Class</label>
-            <select id="student_class" required>
-              <option value="" disabled selected>Select Class</option>
-              <option value="BCS">BCS</option>
-              <option value="BCA">BCA</option>
-              <option value="B.Sc">B.Sc</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Practical Title / Assignment</label>
-            <input type="text" id="title" placeholder="e.g. C++ Array Implementation" required>
-          </div>
-
-          <div class="full-width">
-            <label>Select Practical File (PDF, DOCX, Code Zip, Image)</label>
-            <input type="file" id="file_input" required>
-          </div>
-
-          <div class="full-width">
-            <label>Notes / Comments</label>
-            <textarea id="notes" rows="3" placeholder="Add any details or explanations..."></textarea>
-          </div>
+        <div>
+          <label>Student Name</label>
+          <input type="text" id="student_name" placeholder="John Doe" required>
+        </div>
+        <div>
+          <label>Practical Title / Assignment</label>
+          <input type="text" id="title" placeholder="e.g., Physics Lab 1: Pendulum Experiment" required>
+        </div>
+        <div>
+          <label>Select Practical File (PDF, DOCX, Code Zip, Image)</label>
+          <input type="file" id="file_input" required>
+        </div>
+        <div>
+          <label>Notes / Comments</label>
+          <textarea id="notes" rows="3" placeholder="Add any details or explanations..."></textarea>
         </div>
         
-        <button type="submit" id="submit-btn" class="btn-primary">Upload Practical File</button>
+        <button type="submit" id="submit-btn" class="submit-btn">Upload File to Google Drive</button>
         <span id="loading-text">Uploading file directly to Google Drive... Please wait.</span>
       </form>
     </div>
@@ -221,9 +192,8 @@
       <table>
         <thead>
           <tr>
-            <th>Class & Roll</th>
             <th>Practical Title</th>
-            <th>Uploaded Work</th>
+            <th>Uploaded Google Drive File</th>
             <th>Status</th>
             <th>Grade Mark</th>
           </tr>
@@ -233,54 +203,29 @@
     </div>
   </div>
 
-  <!-- TEACHER LOGIN / PANEL SECTION -->
-  <div class="teacher-section">
-    
-    <!-- LOGIN FORM -->
-    <div id="teacher-login-card" class="card">
-      <h3>Teacher Portal Access</h3>
-      <p style="color: var(--subtext); font-size: 14px;">Teachers must log in to review and grade submissions.</p>
-      
-      <form onsubmit="handleTeacherLogin(event)">
-        <div>
-          <label>Teacher Password</label>
-          <input type="password" id="teacher_password" placeholder="Enter teacher password" required>
-        </div>
-        <button type="submit" class="btn-primary" style="width: auto; align-self: flex-start; padding: 10px 24px;">Login as Teacher</button>
-      </form>
+  <!-- TEACHER VIEW -->
+  <div id="view-teacher" style="display: none;">
+    <div class="card">
+      <h3>Student Submissions Pending Review</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Practical Title</th>
+            <th>Drive File Link</th>
+            <th>Notes</th>
+            <th>Review Action</th>
+          </tr>
+        </thead>
+        <tbody id="teacher-review-body"></tbody>
+      </table>
     </div>
-
-    <!-- TEACHER REVIEW PANEL -->
-    <div id="view-teacher" style="display: none;">
-      <div class="card">
-        <button class="logout-btn" onclick="handleTeacherLogout()">Logout Teacher</button>
-        <h3>Teacher Review Dashboard</h3>
-        <p style="color: var(--subtext);">Review pending student practical uploads below:</p>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Roll & Class</th>
-              <th>Student Name</th>
-              <th>Practical Title</th>
-              <th>Uploaded File</th>
-              <th>Notes</th>
-              <th>Review Action</th>
-            </tr>
-          </thead>
-          <tbody id="teacher-review-body"></tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
-
 </div>
 
 <script>
-  // CONFIGURATION
-  const TEACHER_PASSWORD = "pas"; // <--- CHANGE TEACHER PASSWORD HERE
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvAFQ85Y9bFjJGzhBwzsCBs9-16JOTLc335ZxJ6jV5BMV_iLq-0uEol8cTNzkFFeFv/exec"; // <--- PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+  // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+  const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL";
 
   let submissions = JSON.parse(localStorage.getItem('practicals_db')) || [];
 
@@ -289,32 +234,14 @@
     render();
   }
 
-  // Teacher Auth
-  function handleTeacherLogin(e) {
-    e.preventDefault();
-    const enteredPassword = document.getElementById('teacher_password').value;
-
-    if (enteredPassword === TEACHER_PASSWORD) {
-      sessionStorage.setItem('teacher_logged_in', 'true');
-      checkTeacherAuth();
-      document.getElementById('teacher_password').value = '';
-    } else {
-      alert('Incorrect Password! Access Denied.');
-    }
+  function switchView(role) {
+    document.getElementById('view-student').style.display = role === 'student' ? 'block' : 'none';
+    document.getElementById('view-teacher').style.display = role === 'teacher' ? 'block' : 'none';
+    
+    document.getElementById('btn-student').classList.toggle('active', role === 'student');
+    document.getElementById('btn-teacher').classList.toggle('active', role === 'teacher');
   }
 
-  function handleTeacherLogout() {
-    sessionStorage.removeItem('teacher_logged_in');
-    checkTeacherAuth();
-  }
-
-  function checkTeacherAuth() {
-    const isLoggedIn = sessionStorage.getItem('teacher_logged_in') === 'true';
-    document.getElementById('teacher-login-card').style.display = isLoggedIn ? 'none' : 'block';
-    document.getElementById('view-teacher').style.display = isLoggedIn ? 'block' : 'none';
-  }
-
-  // File Upload Handler
   async function handleStudentSubmit(e) {
     e.preventDefault();
     
@@ -323,16 +250,13 @@
     const fileInput = document.getElementById('file_input');
     const file = fileInput.files[0];
 
-    const studentName = document.getElementById('student_name').value;
-    const studentClass = document.getElementById('student_class').value;
-    const rollNo = document.getElementById('roll_no').value;
-
     if (!file) return alert('Please select a file to upload.');
 
     submitBtn.disabled = true;
     loadingText.style.display = 'block';
 
     try {
+      // Read file and convert to Base64
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -340,17 +264,15 @@
         reader.readAsDataURL(file);
       });
 
+      // Send to Google Drive via Apps Script
       const payload = {
-        fileName: `[${studentClass}_Roll-${rollNo}]_${studentName}_${file.name}`,
+        fileName: `${document.getElementById('student_name').value} - ${file.name}`,
         fileType: file.type,
         fileData: base64Data
       };
 
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
         body: JSON.stringify(payload)
       });
 
@@ -359,9 +281,7 @@
       if (result.status === 'success') {
         const newSubmission = {
           id: String(Date.now()),
-          student_name: studentName,
-          student_class: studentClass,
-          roll_no: rollNo,
+          student_name: document.getElementById('student_name').value,
           title: document.getElementById('title').value,
           link: result.fileUrl,
           notes: document.getElementById('notes').value,
@@ -372,13 +292,12 @@
         submissions.push(newSubmission);
         saveData();
         e.target.reset();
-        alert('Practical file uploaded successfully!');
+        alert('File uploaded to Google Drive successfully!');
       } else {
         alert('Upload failed: ' + result.message);
       }
     } catch (err) {
-      alert('Error uploading file. Make sure your Google Apps Script URL is correct.');
-      console.error(err);
+      alert('Error uploading file: ' + err.message);
     } finally {
       submitBtn.disabled = false;
       loadingText.style.display = 'none';
@@ -402,31 +321,29 @@
     document.getElementById('score-text').innerText = `Total Score: ${correctCount} / ${totalCount} Correct (${percentage}%)`;
     document.getElementById('progress-bar').style.width = `${percentage}%`;
 
-    // Render Student Table
+    // Render Student History
     const studentBody = document.getElementById('student-history-body');
     studentBody.innerHTML = submissions.map(item => `
       <tr>
-        <td><strong>${item.student_class || 'BCS'} (Roll: ${item.roll_no || 'N/A'})</strong></td>
-        <td>${item.title}</td>
-        <td><a href="${item.link}" target="_blank" rel="noopener">Open File</a></td>
+        <td><strong>${item.title}</strong></td>
+        <td><a href="${item.link}" target="_blank" rel="noopener">Open Google Drive File</a></td>
         <td><span class="badge ${item.status}">${item.status.toUpperCase()}</span></td>
         <td>${item.status === 'pending' ? 'Pending Review' : (item.status === 'correct' ? '100%' : '0%')}</td>
       </tr>
     `).join('');
 
-    // Render Teacher Table
+    // Render Teacher View
     const teacherBody = document.getElementById('teacher-review-body');
     const pendingItems = submissions.filter(s => s.status === 'pending');
     
     if (pendingItems.length === 0) {
-      teacherBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--subtext);">No pending submissions to review.</td></tr>`;
+      teacherBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--subtext);">No pending submissions to review.</td></tr>`;
     } else {
       teacherBody.innerHTML = pendingItems.map(item => `
         <tr>
-          <td><strong>${item.student_class || 'BCS'} - Roll ${item.roll_no || 'N/A'}</strong></td>
-          <td>${item.student_name}</td>
+          <td><strong>${item.student_name || 'Student'}</strong></td>
           <td>${item.title}</td>
-          <td><a href="${item.link}" target="_blank" rel="noopener">View File</a></td>
+          <td><a href="${item.link}" target="_blank" rel="noopener">View File on Drive</a></td>
           <td>${item.notes || '-'}</td>
           <td>
             <button class="action-btn btn-approve" onclick="reviewSubmission('${item.id}', 'correct')">Mark Correct</button>
@@ -437,7 +354,6 @@
     }
   }
 
-  checkTeacherAuth();
   render();
 </script>
 </body>
