@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Practical Portal</title>
+  <title>Practical Work Submission Portal</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -43,29 +43,6 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
 
-    .welcome-banner {
-      background: #e0f2fe;
-      border: 1px solid #7dd3fc;
-      color: #0369a1;
-      padding: 12px 16px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 500;
-    }
-
-    .welcome-banner button {
-      background: transparent;
-      border: 1px solid #0369a1;
-      color: #0369a1;
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
     .progress-bar-bg {
       background: #e2e8f0;
       border-radius: 999px;
@@ -88,7 +65,9 @@
       gap: 14px;
     }
 
-    .full-width { grid-column: span 2; }
+    .full-width {
+      grid-column: span 2;
+    }
 
     form { display: flex; flex-direction: column; gap: 14px; }
     label { font-size: 14px; font-weight: 600; color: var(--subtext); display: block; margin-bottom: 4px; }
@@ -184,13 +163,6 @@
 
   <!-- STUDENT VIEW -->
   <div id="view-student">
-    
-    <!-- WELCOME BACK BANNER (Shows if details are saved) -->
-    <div id="welcome-banner" class="welcome-banner" style="display: none;">
-      <span id="welcome-text"></span>
-      <button onclick="clearSavedStudent()">Not you? Change details</button>
-    </div>
-
     <div class="card">
       <h3>Overall Grade & Progress</h3>
       <p id="score-text">Total Score: 0 / 0 Practical Work Correct (0%)</p>
@@ -249,7 +221,6 @@
       <table>
         <thead>
           <tr>
-            <th>Student Name</th>
             <th>Class & Roll</th>
             <th>Practical Title</th>
             <th>Uploaded Work</th>
@@ -264,6 +235,8 @@
 
   <!-- TEACHER LOGIN / PANEL SECTION -->
   <div class="teacher-section">
+    
+    <!-- LOGIN FORM -->
     <div id="teacher-login-card" class="card">
       <h3>Teacher Portal Access</h3>
       <p style="color: var(--subtext); font-size: 14px;">Teachers must log in to review and grade submissions.</p>
@@ -277,6 +250,7 @@
       </form>
     </div>
 
+    <!-- TEACHER REVIEW PANEL -->
     <div id="view-teacher" style="display: none;">
       <div class="card">
         <button class="logout-btn" onclick="handleTeacherLogout()">Logout Teacher</button>
@@ -298,37 +272,17 @@
         </table>
       </div>
     </div>
+
   </div>
 
 </div>
 
 <script>
   // CONFIGURATION
-  const TEACHER_PASSWORD = "pas"; // <--- CHANGE TEACHER PASSWORD HERE
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmH7YD8xItGWlxiqCqFJy97aQtK7_gAbdeQLCnHIbfYSp_tkQ5GLPDuxOWFoICA9p5/exec"; // <--- PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+  const TEACHER_PASSWORD = "admin"; // <--- CHANGE TEACHER PASSWORD HERE
+  const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL"; // <--- PASTE YOUR GOOGLE APPS SCRIPT URL HERE
 
   let submissions = JSON.parse(localStorage.getItem('practicals_db')) || [];
-
-  // Auto load student saved details if returning
-  function loadSavedStudent() {
-    const savedStudent = JSON.parse(localStorage.getItem('current_student'));
-    if (savedStudent) {
-      document.getElementById('student_name').value = savedStudent.name || '';
-      document.getElementById('roll_no').value = savedStudent.roll || '';
-      document.getElementById('student_class').value = savedStudent.class || '';
-
-      document.getElementById('welcome-text').innerText = `Welcome back, ${savedStudent.name}! (Class: ${savedStudent.class}, Roll No: ${savedStudent.roll})`;
-      document.getElementById('welcome-banner').style.display = 'flex';
-    }
-  }
-
-  function clearSavedStudent() {
-    localStorage.removeItem('current_student');
-    document.getElementById('student_name').value = '';
-    document.getElementById('roll_no').value = '';
-    document.getElementById('student_class').value = '';
-    document.getElementById('welcome-banner').style.display = 'none';
-  }
 
   function saveData() {
     localStorage.setItem('practicals_db', JSON.stringify(submissions));
@@ -403,13 +357,6 @@
       const result = await response.json();
 
       if (result.status === 'success') {
-        // Save student info for future visits
-        localStorage.setItem('current_student', JSON.stringify({
-          name: studentName,
-          roll: rollNo,
-          class: studentClass
-        }));
-
         const newSubmission = {
           id: String(Date.now()),
           student_name: studentName,
@@ -424,13 +371,7 @@
 
         submissions.push(newSubmission);
         saveData();
-        
-        // Reset file, title, notes but KEEP student details prefilled
-        document.getElementById('title').value = '';
-        document.getElementById('notes').value = '';
-        fileInput.value = '';
-
-        loadSavedStudent();
+        e.target.reset();
         alert('Practical file uploaded successfully!');
       } else {
         alert('Upload failed: ' + result.message);
@@ -465,8 +406,7 @@
     const studentBody = document.getElementById('student-history-body');
     studentBody.innerHTML = submissions.map(item => `
       <tr>
-        <td><strong>${item.student_name}</strong></td>
-        <td>${item.student_class || 'BCS'} (Roll: ${item.roll_no || 'N/A'})</td>
+        <td><strong>${item.student_class || 'BCS'} (Roll: ${item.roll_no || 'N/A'})</strong></td>
         <td>${item.title}</td>
         <td><a href="${item.link}" target="_blank" rel="noopener">Open File</a></td>
         <td><span class="badge ${item.status}">${item.status.toUpperCase()}</span></td>
@@ -497,7 +437,6 @@
     }
   }
 
-  loadSavedStudent();
   checkTeacherAuth();
   render();
 </script>
