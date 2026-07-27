@@ -1,19 +1,17 @@
 <?php
-$host   = getenv('DB_HOST');
-$user   = getenv('DB_USER');
-$pass   = getenv('DB_PASS');
+$host = getenv('DB_HOST');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
 $dbname = getenv('DB_NAME');
-$port   = getenv('DB_PORT');
+$port = getenv('DB_PORT');
 
 $conn = mysqli_init();
 
-// Required for connecting to Aiven MySQL securely
-$conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+// Ensure SSL is enabled
+$conn->ssl_set(NULL, NULL, NULL, NULL, NULL); 
+$conn->real_connect($host, $user, $pass, $dbname, $port, NULL, MYSQLI_CLIENT_SSL);
 
-$success = $conn->real_connect($host, $user, $pass, $dbname, (int)$port, NULL, MYSQLI_CLIENT_SSL);
-
-if (!$success) {
-    die("Connection failed: " . mysqli_connect_error());
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 ?>
