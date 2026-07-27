@@ -3,17 +3,19 @@ $host   = getenv('DB_HOST');
 $user   = getenv('DB_USER');
 $pass   = getenv('DB_PASS');
 $dbname = getenv('DB_NAME');
-$port   = getenv('DB_PORT');
+$port   = getenv('DB_PORT') ?: '3306';
 
-$conn = mysqli_init();
+try {
+    $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+    
+    $options = [
+        PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+        PDO::ATTR_ERRMODE                  => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE       => PDO::FETCH_ASSOC,
+    ];
 
-// Required SSL settings for Aiven
-$conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, false);
-$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
-
-$success = $conn->real_connect($host, $user, $pass, $dbname, (int)$port, NULL, MYSQLI_CLIENT_SSL);
-
-if (!$success) {
-    die("Connection failed: " . mysqli_connect_error());
+    $conn = new PDO($dsn, $user, $pass, $options);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
 }
 ?>
